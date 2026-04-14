@@ -1,0 +1,125 @@
+{% extends "base_menu.html" %}
+
+{% load humanize %} <!-- https://docs.djangoproject.com/en/5.2/ref/contrib/humanize -->
+{% block head %}
+<style>
+/* Overlay for enlarged image */
+.overlay{
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1050;
+  display: none;
+  background-color: rgba(0,0,0,0.6);
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.overlay img {
+  max-width: 95%;
+  max-height: 90%;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  border-radius: 6px;
+}
+
+/* Title and inline actions */
+.title-row { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.title-link { color: #0d2636; font-weight: 700; font-size: 1.5rem; text-decoration: none; }
+.title-meta { color: #6b7280; font-size: .95rem; margin-left: .5rem; }
+.title-actions { white-space: nowrap; margin-left: .5rem; }
+
+/* Detail image styling (contained in column) */
+.ad-image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Comments */
+.comment-list { margin-top: 1rem; }
+.comment-item { padding: .75rem 1rem; border-radius: 6px; border: 1px solid #e9ecef; margin-bottom: .5rem; }
+.comment-meta { color: #6b7280; font-size: .85rem; margin-top: .5rem; }
+
+/* Small helpers */
+.ad-price { margin-top: .5rem; margin-bottom: 1rem; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% load crispy_forms_tags %}
+{% if pic.content_type %}
+<div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true" onclick="document.getElementById('overlay').style.display = 'none';">
+  <span style="position:absolute; top:1rem; right:1rem; color:#fff; font-size:1.6rem; cursor:pointer;">&times;</span>
+  <img src="{% url 'ads:ad_picture' ad.id %}" alt="Full size {{ ad.title }}">
+</div>
+{% endif %}
+
+<div class="row">
+  <!-- Left column: image -->
+  {% if ad.content_type %}
+  <div class="col-12 col-md-5 mb-3 mb-md-0">
+    <img
+      src="{% url 'ads:ad_picture' ad.id %}"
+      alt="Image for {{ ad.title }}"
+      class="ad-image img-fluid"
+      onclick="document.getElementById('overlay').style.display='flex';"
+      role="button"
+      aria-label="Open image">
+  </div>
+  {% endif %}
+
+  <!-- Right column: text, price, comments -->
+  <div class="col-12 col-md-7">
+    <!-- Title -->
+    <div class="title-row mb-3">
+      <a href="{% url 'ads:ad_detail' ad.id %}" class="title-link">{{ ad.title }}</a>
+      <small class="title-meta">({{ ad.updated_at|naturaltime }})</small>
+
+      {% if ad.owner == user %}
+        <span class="title-actions">
+          <a href="{% url 'ads:ad_update' ad.id %}" class="text-decoration-none me-2"><i class="fa fa-pencil"></i></a>
+          <a href="{% url 'ads:ad_delete' ad.id %}" class="text-danger"><i class="fa fa-trash"></i></a>
+        </span>
+      {% endif %}
+    </div>
+
+    <!-- Description -->
+    <p>{{ ad.text|linebreaks }}</p>
+
+    <!-- Price -->
+    <div class="ad-price">Price: {{ ad.price }}</div>
+
+    <!-- Comment form -->
+    {% if user.is_authenticated %}
+      <form method="post" action="{% url 'ads:ad_comment_create' ad.id %}">
+        {% csrf_token %}
+        {{ comment_form|crispy }}
+        <button type="submit" class="btn btn-primary btn-sm mt-2">Submit</button>
+      </form>
+    {% endif %}
+
+    <!-- Comments -->
+    <div class="comment-list mt-3">
+      {% for comment in comments %}
+        <div class="comment-item d-flex justify-content-between align-items-start">
+          <div>
+            <div>{{ comment.text|linebreaks }}</div>
+            <div class="comment-meta">— {{ comment.owner.get_full_name|default:comment.owner.username }} · {{ comment.updated_at|naturaltime }}</div>
+          </div>
+          {% if user == comment.owner %}
+            <a href="{% url 'ads:ad_comment_delete' comment.id %}" class="text-danger ms-3"><i class="fa fa-trash"></i></a>
+          {% endif %}
+        </div>
+      {% empty %}
+        <div class="text-muted">No comments yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+{% endblock %}

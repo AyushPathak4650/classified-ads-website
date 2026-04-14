@@ -1,0 +1,148 @@
+{% extends "base_menu.html" %}
+
+{# Hide the site hero (app name) from base_bootstrap so the navbar brand isn't repeated #}
+{% block welcome %}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Ads</h1>
+
+  <!-- Search form (keeps the same GET behavior) -->
+  <form class="ms-3" method="get" role="search">
+    <div class="input-group">
+      <input
+        type="text"
+        name="search"
+        class="form-control"
+        placeholder="Search..."
+        aria-label="Search"
+        {% if search %} value="{{ search }}" {% endif %}
+      >
+      <button class="btn btn-outline-secondary" type="submit" title="Search">
+        <i class="fa fa-search" aria-hidden="true"></i>
+      </button>
+      <a class="btn btn-outline-secondary" href="{% url 'ads:all' %}" title="Reset search">
+        <i class="fa fa-undo" aria-hidden="true"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<style>
+/* Small inline style scoped to this template */
+.title-actions { white-space: nowrap; }      /* keep icons together */
+.title-link { color: #0d2636; }              /* neutral, not raw link-blue */
+.title-link:hover { text-decoration: underline; }
+.action-icon { font-size: 0.95rem; }          /* slightly smaller icon size */
+</style>
+
+{% if ad_list %}
+<ul class="list-group">
+  {% for ad in ad_list %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <!-- Left: title with inline action icons directly after the title -->
+      <div class="me-3">
+        <span class="d-inline title-and-actions">
+          <a href="{% url 'ads:ad_detail' ad.id %}" class="fw-bold title-link text-decoration-none">
+            {{ ad.title }}
+          </a>
+
+          {% if ad.owner_id == user.id %}
+            <span class="title-actions ms-2">
+              <!-- Edit icon (immediately after title) -->
+              <a href="{% url 'ads:ad_update' ad.id %}"
+                 class="action-icon text-decoration-none me-2"
+                 title="Edit" aria-label="Edit">
+                <i class="fa fa-edit" aria-hidden="true"></i>
+              </a>
+
+              <!-- Delete icon -->
+              <a href="{% url 'ads:ad_delete' ad.id %}"
+                 class="action-icon text-decoration-none text-danger"
+                 title="Delete" aria-label="Delete">
+                <i class="fa fa-trash" aria-hidden="true"></i>
+              </a>
+            </span>
+          {% endif %}
+        </span>
+      </div>
+
+      <!-- Right: favorite/unfavorite anchors (unchanged behavior/IDs) -->
+      <div>
+        {% if user.is_authenticated %}
+          <a href="#"
+             onclick="favPost('{% url 'ads:ad_unfavorite' ad.id %}', {{ ad.id }} );return false;"
+             {% if ad.id not in favorites %} style="display: none;" {% endif %}
+             id="favorite_star_{{ad.id}}"
+             class="me-2"
+             title="Unfavorite">
+            <span class="fa-stack" style="vertical-align: middle;">
+              <i class="fa fa-star fa-stack-1x" style="color: orange;"></i>
+              <i class="fa fa-star-o fa-stack-1x"></i>
+            </span>
+          </a>
+
+          <a href="#"
+             onclick="favPost('{% url 'ads:ad_favorite' ad.id %}', {{ ad.id }} );return false;"
+             {% if ad.id in favorites %} style="display: none;" {% endif %}
+             id="unfavorite_star_{{ad.id}}"
+             class="me-2"
+             title="Favorite">
+            <span class="fa-stack" style="vertical-align: middle;">
+              <i class="fa fa-star fa-stack-1x" style="display: none; color: orange;"></i>
+              <i class="fa fa-star-o fa-stack-1x"></i>
+            </span>
+          </a>
+        {% endif %}
+      </div>
+    </li>
+  {% endfor %}
+</ul>
+{% else %}
+  <div class="alert alert-info" role="alert">
+    There are no ads in the database.
+  </div>
+{% endif %}
+
+<div class="mt-3">
+  <a class="btn btn-sm btn-primary me-2" href="{% url 'ads:ad_create' %}">Add an Ad</a>
+  {% if user.is_authenticated %}
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'logout' %}?next={% url 'ads:all' %}">Logout</a>
+  {% else %}
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'login' %}?next={% url 'ads:all' %}">Login</a>
+  {% endif %}
+</div>
+
+<script>
+function toggleInlineDisplay(star_id) {
+    var elem = document.getElementById(star_id);
+    if (!elem) return;
+    var style = window.getComputedStyle(elem).display;
+    if (style === "inline" || style === "inline-block") {
+        elem.style.display = 'none';
+        elem.dataset.previousDisplay = style;
+    } else if (style === "block") {
+        elem.style.display = 'none';
+        elem.dataset.previousDisplay = 'block';
+    } else {
+        if (typeof elem.dataset.previousDisplay === 'string') {
+            elem.style.display = elem.dataset.previousDisplay;
+        } else {
+            elem.style.display = 'inline';
+        }
+    }
+}
+
+function favPost(url, thing_id) {
+    console.log('POSTing to', url);
+    fetch(url, { method: 'POST', body: '{}' } )
+    .then((response) => {
+        console.log(url, 'finished');
+        toggleInlineDisplay("unfavorite_star_"+thing_id);
+        toggleInlineDisplay("favorite_star_"+thing_id);
+    }).catch((error) => {
+        alert('Url failed with '+error+' '+url);
+    });
+}
+</script>
+{% endblock %}
